@@ -52,13 +52,13 @@ def save_image(out_path:str, images, metadata=None):
     from PIL.PngImagePlugin import PngInfo
     img = (images[0] * 255).clamp(0, 255).byte().cpu().numpy()
     with io.BytesIO() as binary_obj:
-        with Image.open(img) as img:
-            if metadata:
-                meta= PngInfo()
-                meta.add_text("parameters", json.dumps(metadata))
-                img.save(binary_obj, format="PNG", pnginfo=meta)
-            else:
-                img.save(binary_obj, format="PNG")
+        img = Image.fromarray(img)
+        if metadata:
+            meta= PngInfo()
+            meta.add_text("parameters", json.dumps(metadata))
+            img.save(binary_obj, format="PNG", pnginfo=meta)
+        else:
+            img.save(binary_obj, format="PNG")
         
         with open(out_path, 'wb') as f:
             f.write(encrypt_data(binary_obj.getvalue()))
