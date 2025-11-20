@@ -46,17 +46,18 @@ def save_video(out_path:str, images, fps, metadata=None):
 
     return out_path
 
-def save_image(out_path:str, images, metadata=None):
-    import io, json
+def save_image(out_path:str, images, dict=None):
+    import io
     from PIL import Image
     from PIL.PngImagePlugin import PngInfo
     img = (images[0] * 255).clamp(0, 255).byte().cpu().numpy()
     with io.BytesIO() as binary_obj:
         img = Image.fromarray(img)
-        if metadata:
-            meta= PngInfo()
-            meta.add_text("parameters", json.dumps(metadata))
-            img.save(binary_obj, format="PNG", pnginfo=meta)
+        if dict:
+            metadata = PngInfo()
+            for key, value in dict.items():
+                metadata.add_text(key, str(value))
+            img.save(binary_obj, format="PNG", pnginfo=metadata)
         else:
             img.save(binary_obj, format="PNG")
         
