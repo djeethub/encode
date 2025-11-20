@@ -16,14 +16,14 @@ def encrypt_data(plaintext: bytes, iterations: int = 100000) -> bytes:
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # No associated data
     return salt + nonce + ciphertext
 
-def save_video(out_path:str, images, fps, metadata=None):
-    import io, av
+def save_video(out_path:str, images, fps, dic=None):
+    import io, av, json
     with io.BytesIO() as binary_obj:
         with av.open(binary_obj, mode='w', format="mp4") as output:
             # Add metadata before writing any streams
-            if metadata is not None:
-                for key, value in metadata.items():
-                    output.metadata[key] = value
+            if dic is not None:
+                for key, value in dic.items():
+                    output.metadata[key] = json.dumps(value).strip("{}")
 
             stream = output.add_stream("h264", rate=fps)
             stream.width = images.shape[2]
@@ -46,17 +46,17 @@ def save_video(out_path:str, images, fps, metadata=None):
 
     return out_path
 
-def save_image(out_path:str, images, dict=None):
-    import io
+def save_image(out_path:str, images, dic=None):
+    import io, json
     from PIL import Image
     from PIL.PngImagePlugin import PngInfo
     img = (images[0] * 255).clamp(0, 255).byte().cpu().numpy()
     with io.BytesIO() as binary_obj:
         img = Image.fromarray(img)
-        if dict:
+        if dic:
             metadata = PngInfo()
-            for key, value in dict.items():
-                metadata.add_text(key, str(value))
+            for key, value in dic.items():
+                metadata.add_text(key, json.dumps(value).strip("{}"))
             img.save(binary_obj, format="PNG", pnginfo=metadata)
         else:
             img.save(binary_obj, format="PNG")
