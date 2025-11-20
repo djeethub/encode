@@ -66,7 +66,8 @@ def save_image(out_path:str, images, metadata=None):
     return out_path
 
 def load_image(zip_path:str, file_name:str):
-    import pyzipper, np, torch, os
+    import pyzipper, torch, os
+    import numpy as np
     from PIL import Image
     with pyzipper.AESZipFile(zip_path) as myzip:
         with myzip.open(file_name, pwd=os.getenv('ENC0').encode("utf-8")) as myfile:
