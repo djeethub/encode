@@ -16,31 +16,35 @@ def encrypt_data(plaintext: bytes, iterations: int = 100000) -> bytes:
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # No associated data
     return salt + nonce + ciphertext
 
-def save_video(out_path:str, images, fps, dic=None):
-    import io, av, json
-    with io.BytesIO() as binary_obj:
-        with av.open(binary_obj, mode='w', format="mp4") as output:
-            # Add metadata before writing any streams
-            if dic is not None:
-                for key, value in dic.items():
-                    output.metadata[key] = json.dumps(value).strip("{}")
+def save_mp4(out, images, fps, meta=None):
+    import av, json
+    with av.open(out, mode='w', format="mp4") as output:
+        # Add metadata before writing any streams
+        if meta:
+            for key, value in meta.items():
+                output.metadata[key] = json.dumps(value).strip("{}")
 
-            stream = output.add_stream("h264", rate=fps)
-            stream.width = images.shape[2]
-            stream.height = images.shape[1]
-            stream.pix_fmt = "yuv420p"
-            
-            # Encode video
-            for frame in images:
-                img = (frame * 255).clamp(0, 255).byte().cpu().numpy() # shape: (H, W, 3)
-                frame = av.VideoFrame.from_ndarray(img, format='rgb24')
-                for packet in stream.encode(frame):
-                    output.mux(packet)
+        stream = output.add_stream("h264", rate=fps)
+        stream.width = images.shape[2]
+        stream.height = images.shape[1]
+        stream.pix_fmt = "yuv420p"
+        stream.options = {'crf': '20', 'preset': 'slow'}
         
-            # Flush video
-            for packet in stream.encode():
+        # Encode video
+        for frame in images:
+            img = (frame * 255).clamp(0, 255).byte().cpu().numpy() # shape: (H, W, 3)
+            frame = av.VideoFrame.from_ndarray(img, format='rgb24')
+            for packet in stream.encode(frame):
                 output.mux(packet)
-        
+    
+        # Flush video
+        for packet in stream.encode():
+            output.mux(packet)
+
+def save_video(out_path:str, images, fps, meta=None):
+    import io
+    with io.BytesIO() as binary_obj:
+        save_mp4(binary_obj, images, fps, meta)
         with open(out_path, 'wb') as f:
             f.write(encrypt_data(binary_obj.getvalue()))
 
