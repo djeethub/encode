@@ -16,8 +16,8 @@ def encrypt_data(plaintext: bytes, iterations: int = 100000) -> bytes:
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # No associated data
     return salt + nonce + ciphertext
 
-def save_mp4(out, images, fps, meta=None):
-    import av, json
+def save_mp4(out, images, audio, fps, meta=None):
+    import av, json, math
     with av.open(out, mode='w', format="mp4") as output:
         # Add metadata before writing any streams
         if meta:
@@ -29,7 +29,7 @@ def save_mp4(out, images, fps, meta=None):
         stream.height = images.shape[1]
         stream.pix_fmt = "yuv420p"
         stream.options = {'crf': '20', 'preset': 'slow'}
-        
+
         # Encode video
         for frame in images:
             img = (frame * 255).clamp(0, 255).byte().cpu().numpy() # shape: (H, W, 3)
@@ -41,10 +41,23 @@ def save_mp4(out, images, fps, meta=None):
         for packet in stream.encode():
             output.mux(packet)
 
-def save_video(out_path:str, images, fps, meta=None):
+        if audio:
+            audio_sample_rate = int(audio['sample_rate'])
+            waveform = audio['waveform']
+            waveform = waveform[:, :, :math.ceil((audio_sample_rate / fps) * images.shape[0])]
+            frame = av.AudioFrame.from_ndarray(waveform.movedim(2, 1).reshape(1, -1).float().numpy(), format='flt', layout='mono' if waveform.shape[1] == 1 else 'stereo')
+            frame.sample_rate = audio_sample_rate
+            frame.pts = 0
+            audio_stream = output.add_stream('aac', rate=audio_sample_rate)
+            output.mux(audio_stream.encode(frame))
+
+            # Flush encoder
+            output.mux(audio_stream.encode(None))
+
+def save_video(out_path:str, images, audio, fps, meta=None):
     import io
     with io.BytesIO() as binary_obj:
-        save_mp4(binary_obj, images, fps, meta)
+        save_mp4(binary_obj, images, audio, fps, meta)
         with open(out_path, 'wb') as f:
             f.write(encrypt_data(binary_obj.getvalue()))
 
