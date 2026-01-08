@@ -16,7 +16,7 @@ def encrypt_data(plaintext: bytes, iterations: int = 100000) -> bytes:
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # No associated data
     return salt + nonce + ciphertext
 
-def save_mp4(out, images, audio, fps, meta=None):
+def save_mp4(out, images, fps, audio=None, meta=None):
     import av, json, math
     with av.open(out, mode='w', format="mp4") as output:
         # Add metadata before writing any streams
@@ -54,10 +54,10 @@ def save_mp4(out, images, audio, fps, meta=None):
             # Flush encoder
             output.mux(audio_stream.encode(None))
 
-def save_video(out_path:str, images, audio, fps, meta=None):
+def save_video(out_path:str, images, fps, audio=None, meta=None):
     import io
     with io.BytesIO() as binary_obj:
-        save_mp4(binary_obj, images, audio, fps, meta)
+        save_mp4(binary_obj, images, fps, audio, meta)
         with open(out_path, 'wb') as f:
             f.write(encrypt_data(binary_obj.getvalue()))
 
