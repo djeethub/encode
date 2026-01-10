@@ -30,6 +30,13 @@ def save_mp4(out, images, fps, audio=None, meta=None):
         stream.pix_fmt = "yuv420p"
         stream.options = {'crf': '20', 'preset': 'slow'}
 
+        # Create an audio stream
+        audio_sample_rate = 1
+        audio_stream = None
+        if audio:
+            audio_sample_rate = int(audio['sample_rate'])
+            audio_stream = output.add_stream('aac', rate=audio_sample_rate)        
+
         # Encode video
         for frame in images:
             img = (frame * 255).clamp(0, 255).byte().cpu().numpy() # shape: (H, W, 3)
@@ -41,14 +48,12 @@ def save_mp4(out, images, fps, audio=None, meta=None):
         for packet in stream.encode():
             output.mux(packet)
 
-        if audio:
-            audio_sample_rate = int(audio['sample_rate'])
+        if audio_stream and audio:
             waveform = audio['waveform']
             waveform = waveform[:, :, :math.ceil((audio_sample_rate / fps) * images.shape[0])]
             frame = av.AudioFrame.from_ndarray(waveform.movedim(2, 1).reshape(1, -1).float().numpy(), format='flt', layout='mono' if waveform.shape[1] == 1 else 'stereo')
             frame.sample_rate = audio_sample_rate
             frame.pts = 0
-            audio_stream = output.add_stream('aac', rate=audio_sample_rate)
             output.mux(audio_stream.encode(frame))
 
             # Flush encoder
