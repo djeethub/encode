@@ -16,7 +16,7 @@ def encrypt_data(plaintext: bytes, iterations: int = 100000) -> bytes:
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # No associated data
     return salt + nonce + ciphertext
 
-def save_mp4(out, images, fps, audio=None, meta=None):
+def save_mp4(out, images, fps, audio=None, meta=None, codec="h264", pix_fmt="yuv420p", options={}):
     import av, json, math
     with av.open(out, mode='w', format="mp4") as output:
         # Add metadata before writing any streams
@@ -24,18 +24,18 @@ def save_mp4(out, images, fps, audio=None, meta=None):
             for key, value in meta.items():
                 output.metadata[key] = json.dumps(value).strip("{}")
 
-        stream = output.add_stream("h264", rate=fps)
+        stream = output.add_stream(codec, rate=fps)
         stream.width = images.shape[2]
         stream.height = images.shape[1]
-        stream.pix_fmt = "yuv420p"
-        stream.options = {'crf': '20', 'preset': 'slow'}
+        stream.pix_fmt = pix_fmt
+        stream.options = options
 
         # Create an audio stream
         audio_sample_rate = 1
         audio_stream = None
         if audio:
             audio_sample_rate = int(audio['sample_rate'])
-            audio_stream = output.add_stream('aac', rate=audio_sample_rate)        
+            audio_stream = output.add_stream('aac', rate=audio_sample_rate)
 
         # Encode video
         for frame in images:
@@ -59,10 +59,10 @@ def save_mp4(out, images, fps, audio=None, meta=None):
             # Flush encoder
             output.mux(audio_stream.encode(None))
 
-def save_video(out_path:str, images, fps, audio=None, meta=None):
+def save_video(out_path:str, images, fps, audio=None, meta=None, codec="h264", pix_fmt="yuv420p", options={}):
     import io
     with io.BytesIO() as binary_obj:
-        save_mp4(binary_obj, images, fps, audio, meta)
+        save_mp4(binary_obj, images, fps, audio, meta, codec, pix_fmt, options)
         with open(out_path, 'wb') as f:
             f.write(encrypt_data(binary_obj.getvalue()))
 
